@@ -105,6 +105,9 @@ def import_data():
 
                             print("Getting crime data for postcode: {}".format(postcode_row[postcode[0]]))
 
+                            if postcode_row[latitude] == '\N' or postcode_row[longitude] == '\N':
+                                continue
+
                             crime_data = get_crime_data(postcode_row[latitude],
                                                        postcode_row[longitude],
                                                        date

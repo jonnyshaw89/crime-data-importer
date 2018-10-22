@@ -122,7 +122,8 @@ def import_data():
 
 
 def get_postcode_list(postcode_file):
-    reader = csv.reader(postcode_file['Body'].read(), delimiter=',')
+    s3_csv = postcode_file['Body'].read().decode('utf-8')
+    reader = csv.reader(s3_csv.split('\n'), delimiter=',')
 
     postcodes = (row for row in reader)
 

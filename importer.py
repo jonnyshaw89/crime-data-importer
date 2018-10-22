@@ -113,10 +113,10 @@ def import_data():
                                 writer = csv.DictWriter(fake_csv, fieldnames=['postcode'] + crime_categories)
                                 writer.writerow(crime_data)
 
-            temp.seek(0)
+                    temp.seek(0)
 
-            s3_client.put_object(Body=temp.read(), Bucket=S3_BUCKET,
-                              Key='{}/data.csv'.format(s3_prefix))
+                    s3_client.put_object(Body=temp.read(), Bucket=S3_BUCKET,
+                                      Key='{}/data.csv'.format(s3_prefix))
 
     print('Finished Import')
 

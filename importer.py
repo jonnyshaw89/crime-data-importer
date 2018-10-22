@@ -103,6 +103,8 @@ def import_data():
 
                         for postcode_row in get_postcode_list(postcode_file):
 
+                            print("Getting crime data for postcode: {}".format(postcode_row[postcode[0]]))
+
                             crime_data = get_crime_data(postcode_row[latitude],
                                                        postcode_row[longitude],
                                                        date

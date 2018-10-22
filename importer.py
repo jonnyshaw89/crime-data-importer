@@ -75,7 +75,7 @@ def import_data():
 
     print('Starting Import')
 
-    postcode_file = s3_client.get_object(Bucket=S3_BUCKET, Key='/postcodes/data.csv')
+    postcode_file = s3_client.get_object(Bucket=S3_BUCKET, Key='postcodes/data.csv')
 
     print('Loaded Postcodes')
 

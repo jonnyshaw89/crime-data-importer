@@ -7,6 +7,7 @@ from collections import defaultdict
 
 import boto3 as boto3
 from botocore.vendored import requests
+from retrying import retry
 
 s3_client = boto3.client('s3')
 
@@ -44,6 +45,8 @@ DATA_RANGE_MONTH_START = 9
 
 _DAYS_IN_MONTH = [-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
+
+@retry(stop_max_attempt_number=10, wait_exponential_multiplier=1000)
 def get_crime_data(lat, lng, date):
 
     print('Importing for lat:{} lng:{} date:{}'.format(lat, lng, date))

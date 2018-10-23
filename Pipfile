@@ -11,3 +11,4 @@ python_version = "3.6"
 [packages]
 requests = "*"
 "boto3" = "*"
+retrying = "*"

@@ -1,13 +1,11 @@
-import csv
 import datetime
-import json
 import os
 import tempfile
-from collections import defaultdict
+import zipfile
+from io import BytesIO
+from urllib.request import urlopen
 
 import boto3 as boto3
-from botocore.vendored import requests
-from retrying import retry
 
 s3_client = boto3.client('s3')
 
@@ -40,47 +38,77 @@ def get_env_or_fail(key):
 S3_BUCKET = get_env_or_fail('S3_BUCKET')
 S3_KEY_PREFIX = get_env_or_fail('S3_KEY_PREFIX')
 
-DATA_RANGE_YEAR_START = 2015
-DATA_RANGE_MONTH_START = 9
+DATA_RANGE_YEAR_START = 2013
+DATA_RANGE_MONTH_START = 12
 
 _DAYS_IN_MONTH = [-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 
-@retry(stop_max_attempt_number=10, wait_exponential_multiplier=1000)
-def get_crime_data(lat, lng, date):
-
-    print('Importing for lat:{} lng:{} date:{}'.format(lat, lng, date))
+def get_crime_data_archive(year, month):
+    date = datetime.date(year, month, 1).strftime('%Y-%m')
+    print('Importing crime archive for date:{}'.format(date))
 
     # https://data.police.uk/docs/method/crime-street/
-    url = "https://data.police.uk/api/crimes-street/all-crime?" \
-          "lat={}&" \
-          "lng={}&" \
-          "date={}".format(lat, lng, date)
+    url = "https://data.police.uk/data/archive/{}.zip".format(date)
 
     print(url)
 
-    r = requests.get(url)
-    # https://data.police.uk/api/crimes-street/all-crime?lat=52.629729&lng=-1.131592&date=2017-01
-    print("Status Code: " + str(r.status_code))
+    resp = urlopen(url)
 
-    crimes = json.loads(r.content)
+    existing_dates = []
 
-    if crimes:
-        crime_types = defaultdict(lambda: 0)
+    with zipfile.ZipFile(BytesIO(resp.read())) as my_zip_file:
+        last_date_prefix = None
+        temp_file = None
+        for contained_file in my_zip_file.namelist():
+            if 'street.csv' in contained_file:
 
-        for crime in crimes:
-            crime_types[crime['category']] += 1
+                print("Processing File", contained_file)
 
-        return crime_types
+                current_date_prefix = contained_file.split('/')[0]
+
+                if current_date_prefix in existing_dates:
+                    print("Already loaded, Skipping", current_date_prefix)
+                else:
+                    date_prefix_parts = current_date_prefix.split('-')
+
+                    s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
+                                                             date_prefix_parts[0],
+                                                             date_prefix_parts[1]
+                                                             )
+                    list_response = s3_client.list_objects_v2(Bucket=S3_BUCKET,
+                                                              Prefix=s3_prefix + '/data.csv')
+
+                    if list_response.get('KeyCount') == 0:
+                        if not last_date_prefix:
+                            last_date_prefix = current_date_prefix
+                            temp_file = tempfile.TemporaryFile(mode='w+t')
+
+                        if last_date_prefix != current_date_prefix:
+                            print('Uploading file for period', current_date_prefix)
+                            # Upload file
+                            temp_file.seek(0)
+                            current_prefix_parts = last_date_prefix.split('-')
+                            s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
+                                                                     current_prefix_parts[0],
+                                                                     current_prefix_parts[1]
+                                                                     )
+                            s3_client.put_object(Body=temp_file.read(), Bucket=S3_BUCKET,
+                                                 Key='{}/data.csv'.format(s3_prefix))
+                            existing_dates.append(last_date_prefix)
+                            last_date_prefix = current_date_prefix
+
+                            # Create new tempfile
+                            temp_file = tempfile.TemporaryFile(mode='w+t')
+
+                        for line in my_zip_file.open(contained_file).readlines()[1:]:
+                            temp_file.write(str(line, 'UTF-8'))
+
 
 def import_data():
     now = datetime.datetime.now()
 
     print('Starting Import')
-
-    postcode_file = s3_client.get_object(Bucket=S3_BUCKET, Key='postcodes/data.csv')
-
-    print('Loaded Postcodes')
 
     for year in range(DATA_RANGE_YEAR_START, now.year):
         for month in range(1, 13):
@@ -96,59 +124,10 @@ def import_data():
                                                       Prefix=s3_prefix + '/data.csv')
 
             if list_response.get('KeyCount') == 0:
-
-                date = datetime.date(year, month, 1).strftime('%Y-%m')
-
-                crime_categories = get_crime_categories(date)
-
-                with tempfile.NamedTemporaryFile(mode='w+t') as temp:
-                    with open(temp.name, 'w') as fake_csv:
-
-                        for postcode_row in get_postcode_list(postcode_file):
-
-                            print("Getting crime data for postcode: {}".format(postcode_row[postcode[0]]))
-
-                            if postcode_row[latitude] == '\\N' or postcode_row[longitude] == '\\N':
-                                print("No lat or lng for postcode: {}".format(postcode_row[postcode[0]]))
-                                continue
-
-                            crime_data = get_crime_data(postcode_row[latitude],
-                                                       postcode_row[longitude],
-                                                       date
-                                                       )
-
-                            if crime_data:
-                                crime_data['postcode'] = postcode_row[postcode[0]]
-                                writer = csv.DictWriter(fake_csv, fieldnames=['postcode'] + crime_categories)
-                                writer.writerow(crime_data)
-
-                    temp.seek(0)
-
-                    s3_client.put_object(Body=temp.read(), Bucket=S3_BUCKET,
-                                      Key='{}/data.csv'.format(s3_prefix))
+                get_crime_data_archive(year, month)
 
     print('Finished Import')
 
-
-def get_postcode_list(postcode_file):
-    s3_csv = postcode_file['Body'].read().decode('utf-8')
-    reader = csv.reader(s3_csv.split('\n'), delimiter=',')
-
-    postcodes = (row for row in reader)
-
-    for postcode_row in postcodes:
-        yield postcode_row
-
-
-def get_crime_categories(date):
-    url = 'https://data.police.uk/api/crime-categories?date={}'.format(date)
-    r = requests.get(url)
-    categories = json.loads(r.content)
-    category_names = []
-    for category in categories:
-        category_names.append(category['url'])
-
-    return category_names
 
 if __name__ == '__main__':
     import_data()

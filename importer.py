@@ -29,7 +29,6 @@ def get_crime_data_archive(year, month):
     date = datetime.date(year, month, 1).strftime('%Y-%m')
     print('Importing crime archive for date:{}'.format(date))
 
-    # https://data.police.uk/docs/method/crime-street/
     url = "https://data.police.uk/data/archive/{}.zip".format(date)
 
     print(url)
@@ -94,7 +93,7 @@ def import_data():
 
             s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
                                                      year,
-                                                     datetime.date(year, month, 1).strftime('%B')
+                                                     datetime.date(year, month, 1).strftime('%m')
                                                      )
             list_response = s3_client.list_objects_v2(Bucket=S3_BUCKET,
                                                       Prefix=s3_prefix + '/data.csv')

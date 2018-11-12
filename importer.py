@@ -41,8 +41,6 @@ def get_crime_data_archive(year, month):
         for contained_file in my_zip_file.namelist():
             if 'street.csv' in contained_file:
 
-                print("Processing File", contained_file)
-
                 current_date_prefix = contained_file.split('/')[0]
 
                 date_prefix_parts = current_date_prefix.split('-')
@@ -55,6 +53,9 @@ def get_crime_data_archive(year, month):
                                                           Prefix=s3_prefix + '/data.csv')
 
                 if list_response.get('KeyCount') == 0:
+
+                    print("Processing File", contained_file)
+
                     if not last_date_prefix:
                         last_date_prefix = current_date_prefix
                         temp_file = tempfile.TemporaryFile(mode='w+t')

@@ -80,6 +80,15 @@ def get_crime_data_archive(year, month):
                         for line in my_zip_file.open(contained_file).readlines()[1:]:
                             temp_file.write(str(line, 'UTF-8'))
 
+            current_prefix_parts = last_date_prefix.split('-')
+            s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
+                                                     current_prefix_parts[0],
+                                                     current_prefix_parts[1]
+                                                     )
+            s3_client.put_object(Body=temp_file.read(), Bucket=S3_BUCKET,
+                                 Key='{}/data.csv'.format(s3_prefix))
+            temp_file.close()
+
 
 def import_data():
     now = datetime.datetime.now()

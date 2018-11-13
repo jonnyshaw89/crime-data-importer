@@ -86,7 +86,7 @@ def import_data():
 
     print('Starting Import')
 
-    for year in range(DATA_RANGE_YEAR_START, now.year):
+    for year in range(DATA_RANGE_YEAR_START, now.year+1):
         for month in range(1, 13):
             if year == DATA_RANGE_YEAR_START:
                 if month < DATA_RANGE_MONTH_START:

@@ -39,6 +39,7 @@ def get_crime_data_archive(year, month):
         with zipfile.ZipFile(BytesIO(resp.read())) as my_zip_file:
             last_date_prefix = None
             temp_file = None
+            new_file = True
             for contained_file in my_zip_file.namelist():
                 if 'street.csv' in contained_file:
 
@@ -60,9 +61,10 @@ def get_crime_data_archive(year, month):
                         if not last_date_prefix:
                             last_date_prefix = current_date_prefix
                             temp_file = tempfile.TemporaryFile(mode='w+t')
+                            new_file = True
 
                         if last_date_prefix != current_date_prefix:
-                            print('Uploading file for period', current_date_prefix)
+                            print('Uploading file for period', last_date_prefix)
                             # Upload file
                             temp_file.seek(0)
 
@@ -80,9 +82,14 @@ def get_crime_data_archive(year, month):
 
                             # Create new tempfile
                             temp_file = tempfile.TemporaryFile(mode='w+t')
+                            new_file = True
 
-                        for line in my_zip_file.open(contained_file).readlines():
+                        for line in my_zip_file.open(contained_file).readlines()[0 if new_file else 1:]:
                             temp_file.write(str(line, 'UTF-8'))
+
+                        if new_file:
+                            new_file = False
+                            continue
 
             current_prefix_parts = last_date_prefix.split('-')
             s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,

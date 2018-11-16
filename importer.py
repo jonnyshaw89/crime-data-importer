@@ -1,6 +1,7 @@
 import contextlib
 import datetime
 import os
+import pandas as pd
 import tempfile
 import zipfile
 from io import BytesIO
@@ -50,7 +51,7 @@ def get_crime_data_archive(year, month):
                                                              date_prefix_parts[1]
                                                              )
                     list_response = s3_client.list_objects_v2(Bucket=S3_BUCKET,
-                                                              Prefix=s3_prefix + '/data.csv')
+                                                              Prefix=s3_prefix + '/data.parquet')
 
                     if list_response.get('KeyCount') == 0:
 
@@ -64,20 +65,23 @@ def get_crime_data_archive(year, month):
                             print('Uploading file for period', current_date_prefix)
                             # Upload file
                             temp_file.seek(0)
+
                             current_prefix_parts = last_date_prefix.split('-')
                             s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
                                                                      current_prefix_parts[0],
                                                                      current_prefix_parts[1]
                                                                      )
-                            s3_client.put_object(Body=temp_file.read(), Bucket=S3_BUCKET,
-                                                 Key='{}/data.csv'.format(s3_prefix))
+
+                            df = pd.read_csv(temp_file)
+                            df.to_parquet('s3://{}/{}/data.parquet'.format(S3_BUCKET, s3_prefix), compression='gzip')
+
                             temp_file.close()
                             last_date_prefix = current_date_prefix
 
                             # Create new tempfile
                             temp_file = tempfile.TemporaryFile(mode='w+t')
 
-                        for line in my_zip_file.open(contained_file).readlines()[1:]:
+                        for line in my_zip_file.open(contained_file).readlines():
                             temp_file.write(str(line, 'UTF-8'))
 
             current_prefix_parts = last_date_prefix.split('-')
@@ -85,8 +89,9 @@ def get_crime_data_archive(year, month):
                                                      current_prefix_parts[0],
                                                      current_prefix_parts[1]
                                                      )
-            s3_client.put_object(Body=temp_file.read(), Bucket=S3_BUCKET,
-                                 Key='{}/data.csv'.format(s3_prefix))
+
+            df = pd.read_csv(temp_file)
+            df.to_parquet('s3://{}/{}/data.parquet'.format(S3_BUCKET, s3_prefix), compression='gzip')
             temp_file.close()
 
 
@@ -106,7 +111,7 @@ def import_data():
                                                      datetime.date(year, month, 1).strftime('%m')
                                                      )
             list_response = s3_client.list_objects_v2(Bucket=S3_BUCKET,
-                                                      Prefix=s3_prefix + '/data.csv')
+                                                      Prefix=s3_prefix + '/data.parquet')
 
             if list_response.get('KeyCount') == 0:
                 get_crime_data_archive(year, month)

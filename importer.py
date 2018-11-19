@@ -76,7 +76,7 @@ def get_crime_data_archive(year, month):
                                                                      )
 
                             df = pd.read_csv(temp_file)
-                            df.rename(columns={'Month': 'Period'}, inplace=True)
+                            df.rename(columns={'Month': 'Period'})
                             df.to_parquet('s3://{}/{}/data.parquet'.format(S3_BUCKET, s3_prefix), compression='gzip')
 
                             temp_file.close()

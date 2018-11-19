@@ -1,4 +1,4 @@
-FROM python:3.6-alpine
+FROM python:3.6
 
 ENV AWS_DEFAULT_REGION eu-west-1
 

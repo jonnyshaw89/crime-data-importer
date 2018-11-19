@@ -59,6 +59,7 @@ def get_crime_data_archive(year, month):
                         print("Processing File", contained_file)
 
                         if not last_date_prefix:
+                            print('Creating TempFile')
                             last_date_prefix = current_date_prefix
                             temp_file = tempfile.TemporaryFile(mode='w+t')
                             new_file = True
@@ -85,6 +86,7 @@ def get_crime_data_archive(year, month):
                             temp_file = tempfile.TemporaryFile(mode='w+t')
                             new_file = True
 
+                        print("Writing data from File", contained_file)
                         for line in my_zip_file.open(contained_file).readlines()[0 if new_file else 1:]:
                             temp_file.write(str(line, 'UTF-8'))
 
@@ -92,6 +94,8 @@ def get_crime_data_archive(year, month):
                             new_file = False
                             continue
 
+            print('Uploading file for period', last_date_prefix)
+            temp_file.seek(0)
             current_prefix_parts = last_date_prefix.split('-')
             s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
                                                      current_prefix_parts[0],

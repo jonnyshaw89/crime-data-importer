@@ -2,7 +2,8 @@ FROM python:3.6-alpine
 
 ENV AWS_DEFAULT_REGION eu-west-1
 
-RUN pip install pipenv
+RUN pip install pipenv && \
+    pip install pip==18.0
 
 COPY Pipfile Pipfile
 COPY Pipfile.lock Pipfile.lock

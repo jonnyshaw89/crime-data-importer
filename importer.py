@@ -97,7 +97,7 @@ def upload_parquet(temp_file, last_date_prefix):
 
     df = pd.read_csv(temp_file)
     df = df.rename(columns={'Month': 'Period'})
-    df = df.drop(columns=['Context'])
+    df = df.drop(columns=['Context', 'last outcome category'])
     df.to_parquet('s3://{}/{}/data.parquet'.format(S3_BUCKET, s3_prefix), compression='gzip')
     temp_file.close()
 

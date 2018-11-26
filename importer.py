@@ -67,19 +67,8 @@ def get_crime_data_archive(year, month):
                         if last_date_prefix != current_date_prefix:
                             print('Uploading file for period', last_date_prefix)
                             # Upload file
-                            temp_file.seek(0)
+                            upload_parquet(temp_file, last_date_prefix)
 
-                            current_prefix_parts = last_date_prefix.split('-')
-                            s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
-                                                                     current_prefix_parts[0],
-                                                                     current_prefix_parts[1]
-                                                                     )
-
-                            df = pd.read_csv(temp_file)
-                            df = df.rename(columns={'Month': 'Period'})
-                            df.to_parquet('s3://{}/{}/data.parquet'.format(S3_BUCKET, s3_prefix), compression='gzip')
-
-                            temp_file.close()
                             last_date_prefix = current_date_prefix
 
                             # Create new tempfile
@@ -95,17 +84,22 @@ def get_crime_data_archive(year, month):
                             continue
 
             print('Uploading file for period', last_date_prefix)
-            temp_file.seek(0)
-            current_prefix_parts = last_date_prefix.split('-')
-            s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
-                                                     current_prefix_parts[0],
-                                                     current_prefix_parts[1]
-                                                     )
+            upload_parquet(temp_file, last_date_prefix)
 
-            df = pd.read_csv(temp_file)
-            df = df.rename(columns={'Month': 'Period'})
-            df.to_parquet('s3://{}/{}/data.parquet'.format(S3_BUCKET, s3_prefix), compression='gzip')
-            temp_file.close()
+
+def upload_parquet(temp_file, last_date_prefix):
+    temp_file.seek(0)
+    current_prefix_parts = last_date_prefix.split('-')
+    s3_prefix = '{}/year={}/month={}'.format(S3_KEY_PREFIX,
+                                             current_prefix_parts[0],
+                                             current_prefix_parts[1]
+                                             )
+
+    df = pd.read_csv(temp_file)
+    df = df.rename(columns={'Month': 'Period'})
+    df = df.drop(columns=['Context'])
+    df.to_parquet('s3://{}/{}/data.parquet'.format(S3_BUCKET, s3_prefix), compression='gzip')
+    temp_file.close()
 
 
 def import_data():

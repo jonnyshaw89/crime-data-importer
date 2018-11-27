@@ -78,7 +78,7 @@ def get_crime_data_archive(year, month):
                         print("Writing data from File", contained_file)
                         if new_file:
                             for line in my_zip_file.open(contained_file).readlines()[:1]:
-                                temp_file.write(str(line.replace(" ", ""), 'UTF-8'))
+                                temp_file.write(str(line, 'UTF-8').replace(" ", ""))
                             new_file = False
 
                         for line in my_zip_file.open(contained_file).readlines()[1:]:

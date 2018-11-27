@@ -76,12 +76,13 @@ def get_crime_data_archive(year, month):
                             new_file = True
 
                         print("Writing data from File", contained_file)
-                        for line in my_zip_file.open(contained_file).readlines()[0 if new_file else 1:]:
-                            temp_file.write(str(line, 'UTF-8'))
-
                         if new_file:
+                            for line in my_zip_file.open(contained_file).readlines()[:1]:
+                                temp_file.write(str(line.replace(" ", ""), 'UTF-8'))
                             new_file = False
-                            continue
+
+                        for line in my_zip_file.open(contained_file).readlines()[1:]:
+                            temp_file.write(str(line, 'UTF-8'))
 
             print('Uploading file for period', last_date_prefix)
             upload_parquet(temp_file, last_date_prefix)
